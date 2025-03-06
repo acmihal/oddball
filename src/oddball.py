@@ -1,4 +1,4 @@
-from z3 import And, AtLeast, AtMost, Bool, Distinct, Implies, Not, Or, PbEq, Solver
+from z3 import And, AtLeast, AtMost, Bool, Distinct, Implies, Not, Or, PbEq, Solver, sat
 
 num_balls = 12
 num_weighings = 3
@@ -21,8 +21,33 @@ def ix_to_symbols(ix):
         ix = ix // len(weigh_outcomes)
     return symbols
 
+def symbols_to_ix(symbols):
+    ix = 0
+    for symbol in symbols:
+        ix = ix * len(weigh_outcomes)
+        ix = ix + weigh_outcomes.index(symbol)
+    return ix
+
+def weigh_result(left_set, right_set, ball, error):
+    if len(left_set) < len(right_set):
+        return '<'
+    elif len(left_set) > len(right_set):
+        return '>'
+    elif ball in left_set:
+        if error == '-':
+            return '<'
+        else:
+            return '>'
+    elif ball in right_set:
+        if error == '-':
+            return '>'
+        else:
+            return '<'
+    else:
+        return '='
+
 def main():
-    print("Hello, world!")
+    print(f'Solving for {num_balls} balls and {num_weighings} weighings')
 
     tt_rows = len(weigh_outcomes) ** num_weighings
 
@@ -77,27 +102,65 @@ def main():
     s.add(And([weigh_left_bvar(0, ball) for ball in range(num_balls // len(weigh_outcomes))]))
     s.add(And([weigh_right_bvar(0, ball) for ball in range(num_balls // len(weigh_outcomes), 2 * num_balls // len(weigh_outcomes))]))
 
-    print(s.check())
+    # Solve the model.
+    solver_result = s.check()
 
-    m = s.model()
+    if solver_result == sat:
+        m = s.model()
 
-    for weigh in range(num_weighings):
-        print(f'Weighing {weigh}')
-        left_balls = [ball for ball in range(num_balls) if m[weigh_left_bvar(weigh, ball)]]
-        print(f'    left = {left_balls}')
-        right_balls = [ball for ball in range(num_balls) if m[weigh_right_bvar(weigh, ball)]]
-        print(f'    right = {right_balls}')
-        holdout_balls = [ball for ball in range(num_balls) if not m[weigh_left_bvar(weigh, ball)] and not m[weigh_right_bvar(weigh, ball)]]
-        print(f'    holdout = {holdout_balls}')
+        print()
+        print('Solution:')
+        for weigh in range(num_weighings):
+            left_balls = [ball for ball in range(num_balls) if m[weigh_left_bvar(weigh, ball)]]
+            right_balls = [ball for ball in range(num_balls) if m[weigh_right_bvar(weigh, ball)]]
+            holdout_balls = [ball for ball in range(num_balls) if not m[weigh_left_bvar(weigh, ball)] and not m[weigh_right_bvar(weigh, ball)]]
+            print(f'Weighing {weigh}: {left_balls} {"".join(weigh_outcomes)} {right_balls} holdout={holdout_balls}')
+            #print(f'    left = {left_balls}')
+            #print(f'    right = {right_balls}')
+            #print(f'    holdout = {holdout_balls}')
 
-    print('Truth Table')
-    print("  ".join(['ix'] + [f'W{weigh}' for weigh in range(num_weighings)] + ['Result']))
-    for ix in range(tt_rows):
-        outcomes = [f'{ball}{error}' for error in errors for ball in range(num_balls) if m[truth_table_bvar(ix, ball, error)]]
-        if len(outcomes) == 0:
-            outcomes = [' ']
+        print()
+        print('Truth Table:')
+        print("  ".join(['ix'] + [f'W{weigh}' for weigh in range(num_weighings)] + ['Result']))
+        for ix in range(tt_rows):
+            outcomes = [f'{ball}{error}' for error in errors for ball in range(num_balls) if m[truth_table_bvar(ix, ball, error)]]
+            if len(outcomes) == 0:
+                outcomes = [' ']
 
-        print("  ".join([f'{ix:>2}'] + [f' {ix_to_symbols(ix)[j]}' for j in range(num_weighings)] + outcomes))
+            print("  ".join([f'{ix:>2}'] + [f' {ix_to_symbols(ix)[j]}' for j in range(num_weighings)] + outcomes))
+
+        # Test the result.
+        correct_results = 0
+        incorrect_results = 0
+        for ball in range(num_balls):
+            for error in errors:
+                print()
+                print(f'Test {ball}{error}:')
+                weigh_results = []
+                for weigh in range(num_weighings):
+                    left_set = [left_ball for left_ball in range(num_balls) if m[weigh_left_bvar(weigh, left_ball)]]
+                    right_set = [right_ball for right_ball in range(num_balls) if m[weigh_right_bvar(weigh, right_ball)]]
+                    weigh_results.append(weigh_result(left_set, right_set, ball, error))
+                    print(f'    W{weigh}: {left_set} {weigh_results[-1]} {right_set}')
+                tt_ix = symbols_to_ix(weigh_results)
+                tt_outcome = [f'{tt_ball}{tt_error}' for tt_error in errors for tt_ball in range(num_balls) if m[truth_table_bvar(tt_ix, tt_ball, tt_error)]]
+                if len(tt_outcome) == 1 and tt_outcome[0] == f'{ball}{error}':
+                    print(f'    Truth table result: {tt_outcome} correct')
+                    correct_results = correct_results + 1
+                else:
+                    print(f'    Truth table result: {tt_outcome} INCORRECT, expected {ball}{error}')
+                    incorrect_results = incorrect_results + 1
+
+        print()
+        print(f'Total correct results: {correct_results}')
+        print(f'Total incorrect results: {incorrect_results}')
+
+        assert (correct_results == len(errors) * num_balls) and (incorrect_results == 0), "SAT model does not correctly solve the problem"
+
+        return True
+    else:
+        print('No solution exists for {num_balls} balls and {num_weighings} weighings.')
+        return False
 
 if __name__ == "__main__":
     main()
