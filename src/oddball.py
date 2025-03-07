@@ -1,4 +1,4 @@
-from z3 import And, AtLeast, AtMost, Bool, Implies, Not, Or, PbEq, Solver, sat
+from z3 import AtLeast, AtMost, Bool, Implies, Not, Or, Solver, sat
 
 num_balls = 12
 num_weighings = 3
