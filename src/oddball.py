@@ -16,21 +16,32 @@ Light = '-'
 Heavy = '+'
 Errors = [Light, Heavy]
 
+# Boolean variable, when true, indicates that weighing #weigh features
+# left_ball on the left side of the balance scale and right_ball on the right side.
 def weigh_pair_bvar(weigh, left_ball, right_ball):
     return Bool(f'w{weigh}_l{left_ball}_r{right_ball}')
 
+# Boolean expression, when true, indicates that weighing #weigh features
+# ball on the left side of the balance scale.
 def weigh_left_expr(weigh, ball, num_balls):
     return Or([weigh_pair_bvar(weigh, ball, other) for other in range(num_balls)])
 
+# Boolean expression, when true, indicates that weighing #weigh features
+# ball on the right side of the balance scale.
 def weigh_right_expr(weigh, ball, num_balls):
     return Or([weigh_pair_bvar(weigh, other, ball) for other in range(num_balls)])
 
+# Boolean expression, when true, indicates that weighing #weigh does not include ball.
+# Ball is instead in the holdout set during weighing #weigh.
 def weigh_holdout_expr(weigh, ball, num_balls):
     return Not(Or(weigh_left_expr(weigh, ball, num_balls), weigh_right_expr(weigh, ball, num_balls)))
 
+# Boolean variable, when true, indicates that truth table row ix has the result of ball with error.
 def truth_table_bvar(ix, ball, error):
     return Bool(f'tt{ix}_b{ball}{error}')
 
+# Converts a truth table row index to a list of Outcomes symbols.
+# e.g. ix=0 symbols=['<', ...]
 def ix_to_symbols(ix, num_weighings):
     symbols = []
     for _ in range(num_weighings):
@@ -38,12 +49,16 @@ def ix_to_symbols(ix, num_weighings):
         ix = ix // len(Outcomes)
     return symbols
 
+# Converts a list of Outcomes symbols to a truth table row index.
 def symbols_to_ix(symbols):
     ix = 0
     for symbol in symbols:
         ix = (ix * len(Outcomes)) + Outcomes.index(symbol)
     return ix
 
+# Returns the result of weighing the balls in left_set against the balls in right_set,
+# given the incorrectly-weighted ball and error.
+# Used to test that solutions are correct.
 def weigh_outcome(left_set, right_set, ball, error):
     if len(left_set) < len(right_set):
         return HeavyRight
@@ -56,9 +71,11 @@ def weigh_outcome(left_set, right_set, ball, error):
     else:
         return Balance
 
-def pretty_list(balls):
-    return f'[{", ".join([f"{ball:>2}" for ball in balls])}]'
+# Pretty-prints a list of balls with appropriate spacing.
+def pretty_list(ball_list):
+    return f'[{", ".join([f"{ball:>2}" for ball in ball_list])}]'
 
+# Solve for the given number of balls and weighings.
 def solve(num_balls, num_weighings):
     print(f'Solving for {num_balls} balls and {num_weighings} weighings')
 
@@ -67,10 +84,13 @@ def solve(num_balls, num_weighings):
     wr_expr = partial(weigh_right_expr, num_balls=num_balls)
     wh_expr = partial(weigh_holdout_expr, num_balls=num_balls)
 
+    # Number of rows in the truth table.
     tt_rows = len(Outcomes) ** num_weighings
 
+    # List of all possible ball-error combinations.
     ball_error_list = list(product(range(num_balls), Errors))
 
+    # Initialize the solver and begin to add constraints.
     s = Solver()
 
     # There is a single instance of each ball. A ball cannot be on the scale multiple times in a single weighing.
@@ -102,13 +122,14 @@ def solve(num_balls, num_weighings):
                     light_side_expr = wl_expr(weigh, ball) if outcome == LightLeft else wr_expr(weigh, ball)
                     s.add(Implies(light_side_expr, Not(truth_table_bvar(ix, ball, Heavy))))
 
-    # Symmetry breaking constraint.
+    # Symmetry breaking constraint. The 0'th weighing should have (at least) ball 0 on the left side and ball 1 on the right side.
     s.add(weigh_pair_bvar(0, 0, 1))
 
     # Solve the model.
     solver_result = s.check()
 
     if solver_result == sat:
+        # The problem is solvable for num_balls and num_weighings.
         m = s.model()
 
         # Extract the sets of left and right balls for each weighing.
@@ -122,9 +143,12 @@ def solve(num_balls, num_weighings):
         # Print the solution.
         print()
         print('Solution:')
+
+        # Print the balls involved in each weighing.
         for weigh in range(num_weighings):
             print(f'W{weigh}: {pretty_list(weigh_left_right[weigh][0])} {"".join(Outcomes)} {pretty_list(weigh_left_right[weigh][1])}')
 
+        # Print the truth table mapping weighing outcomes to ball-error combinations.
         print()
         print('Truth Table:')
         print("  ".join(['ix'] + [f'W{weigh}' for weigh in range(num_weighings)] + [' Result']))
@@ -134,13 +158,22 @@ def solve(num_balls, num_weighings):
         # Test the solution.
         correct_results = 0
         incorrect_results = 0
+
+        # Test each ball-error combination.
         for ball, error in ball_error_list:
             print()
             print(f'Test {ball}{error}:')
+
+            # Simulate each weighing.
             weigh_outcomes = [weigh_outcome(*weigh_left_right[weigh], ball, error) for weigh in range(num_weighings)]
+
             for weigh in range(num_weighings):
                 print(f'    W{weigh}: {pretty_list(weigh_left_right[weigh][0])} {weigh_outcomes[weigh]} {pretty_list(weigh_left_right[weigh][1])}')
+
+            # Look up the ball-error combination in the truth table.
             tt_ix = symbols_to_ix(weigh_outcomes)
+
+            # Confirm the result is the ball-error combination being tested.
             if len(tt_result[tt_ix]) == 1 and tt_result[tt_ix][0] == f'{ball}{error}':
                 print(f'    Truth table result: {tt_result[tt_ix]} is correct')
                 correct_results = correct_results + 1
@@ -152,10 +185,12 @@ def solve(num_balls, num_weighings):
         print(f'Total correct results: {correct_results}')
         print(f'Total incorrect results: {incorrect_results}')
 
+        # Check that all tests pass.
         assert (correct_results == len(Errors) * num_balls) and (incorrect_results == 0), "SAT model does not correctly solve the problem"
 
         return True
     else:
+        # The problem is not solvable for num_balls and num_weighings.
         print(f'No solution exists for {num_balls} balls and {num_weighings} weighings.')
         return False
 
