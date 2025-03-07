@@ -108,9 +108,9 @@ def main():
         print()
         print('Solution:')
         for weigh in range(num_weighings):
-            left_balls = [ball for ball in range(num_balls) if m.eval(weigh_left_expr(weigh, ball), model_completion=True)]
-            right_balls = [ball for ball in range(num_balls) if m.eval(weigh_right_expr(weigh, ball), model_completion=True)]
-            holdout_balls = [ball for ball in range(num_balls) if m.eval(weigh_holdout_expr(weigh, ball), model_completion=True)]
+            left_balls = [ball for ball in range(num_balls) if m.eval(weigh_left_expr(weigh, ball))]
+            right_balls = [ball for ball in range(num_balls) if m.eval(weigh_right_expr(weigh, ball))]
+            holdout_balls = [ball for ball in range(num_balls) if m.eval(weigh_holdout_expr(weigh, ball))]
             print(f'Weighing {weigh}: {pretty_list(left_balls)} {"".join(Outcomes)} {pretty_list(right_balls)} holdout={pretty_list(holdout_balls)}')
 
         print()
@@ -129,8 +129,8 @@ def main():
                 print(f'Test {ball}{error}:')
                 weigh_results = []
                 for weigh in range(num_weighings):
-                    left_set = [left_ball for left_ball in range(num_balls) if m.eval(weigh_left_expr(weigh, left_ball), model_completion=True)]
-                    right_set = [right_ball for right_ball in range(num_balls) if m.eval(weigh_right_expr(weigh, right_ball), model_completion=True)]
+                    left_set = [left_ball for left_ball in range(num_balls) if m.eval(weigh_left_expr(weigh, left_ball))]
+                    right_set = [right_ball for right_ball in range(num_balls) if m.eval(weigh_right_expr(weigh, right_ball))]
                     weigh_results.append(weigh_result(left_set, right_set, ball, error))
                     print(f'    W{weigh}: {pretty_list(left_set)} {weigh_results[-1]} {pretty_list(right_set)}')
                 tt_ix = symbols_to_ix(weigh_results)
