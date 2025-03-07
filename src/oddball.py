@@ -1,12 +1,18 @@
+from itertools import product
 from z3 import AtLeast, AtMost, Bool, Implies, Not, Or, Solver, sat
 
 num_balls = 12
 num_weighings = 3
 
+# Possible outcomes of a weighing.
 HeavyRight = '<'
+LightLeft = HeavyRight
 Balance = '='
 HeavyLeft = '>'
+LightRight = HeavyLeft
 Outcomes = [HeavyRight, Balance, HeavyLeft]
+
+# Ball weight errors.
 Light = '-'
 Heavy = '+'
 Errors = [Light, Heavy]
@@ -15,13 +21,13 @@ def weigh_pair_bvar(weigh, left_ball, right_ball):
     return Bool(f'w{weigh}_l{left_ball}_r{right_ball}')
 
 def weigh_left_expr(weigh, ball):
-    return Or([weigh_pair_bvar(weigh, ball, right_ball) for right_ball in range(num_balls)])
+    return Or([weigh_pair_bvar(weigh, ball, other) for other in range(num_balls)])
 
 def weigh_right_expr(weigh, ball):
-    return Or([weigh_pair_bvar(weigh, left_ball, ball) for left_ball in range(num_balls)])
+    return Or([weigh_pair_bvar(weigh, other, ball) for other in range(num_balls)])
 
 def weigh_holdout_expr(weigh, ball):
-    return Not(Or([Or(weigh_pair_bvar(weigh, ball, other_ball), weigh_pair_bvar(weigh, other_ball, ball)) for other_ball in range(num_balls)]))
+    return Not(Or(weigh_left_expr(weigh, ball), weigh_right_expr(weigh, ball)))
 
 def truth_table_bvar(ix, ball, error):
     return Bool(f'tt{ix}_b{ball}{error}')
@@ -39,15 +45,15 @@ def symbols_to_ix(symbols):
         ix = (ix * len(Outcomes)) + Outcomes.index(symbol)
     return ix
 
-def weigh_result(left_set, right_set, ball, error):
+def weigh_outcome(left_set, right_set, ball, error):
     if len(left_set) < len(right_set):
         return HeavyRight
     elif len(left_set) > len(right_set):
         return HeavyLeft
     elif ball in left_set:
-        return HeavyLeft if error == Heavy else HeavyRight
+        return HeavyLeft if error == Heavy else LightLeft
     elif ball in right_set:
-        return HeavyRight if error == Heavy else HeavyLeft
+        return HeavyRight if error == Heavy else LightRight
     else:
         return Balance
 
@@ -59,21 +65,19 @@ def main():
 
     tt_rows = len(Outcomes) ** num_weighings
 
+    ball_error_set = set(product(range(num_balls), Errors))
+
     s = Solver()
 
     # There is a single instance of each ball. A ball cannot be on the scale multiple times in a single weighing.
-    s.add([AtMost(*[weigh_pair_bvar(weigh, ball, other_ball) for other_ball in range(num_balls)],
-                  *[weigh_pair_bvar(weigh, other_ball, ball) for other_ball in range(num_balls)], 1)
+    s.add([AtMost(*weigh_left_expr(weigh, ball).children(), *weigh_right_expr(weigh, ball).children(), 1)
            for ball in range(num_balls) for weigh in range(num_weighings)])
 
-    # Each weighing must have at least one pair of balls, but can have more than one.
-    s.add([AtLeast(*[weigh_pair_bvar(weigh, lball, rball) for lball in range(num_balls) for rball in range(num_balls)], 1) for weigh in range(num_weighings)])
-
     # Each truth table row implies at most one result, but can imply no result.
-    s.add([AtMost(*[truth_table_bvar(ix, ball, error) for ball in range(num_balls) for error in Errors], 1) for ix in range(tt_rows)])
+    s.add([AtMost(*[truth_table_bvar(ix, ball, error) for ball, error in ball_error_set], 1) for ix in range(tt_rows)])
 
     # Each result must appear in at least one truth table row.
-    s.add([AtLeast(*[truth_table_bvar(ix, ball, error) for ix in range(tt_rows)], 1) for ball in range(num_balls) for error in Errors])
+    s.add([AtLeast(*[truth_table_bvar(ix, ball, error) for ix in range(tt_rows)], 1) for ball, error in ball_error_set])
 
     # Weighing outcomes imply truth table results.
     for ix in range(tt_rows):
@@ -85,16 +89,14 @@ def main():
                 else:
                     # The result is not any of the balls in the holdout group.
                     s.add(Implies(weigh_holdout_expr(weigh, ball), Not(Or([truth_table_bvar(ix, ball, error) for error in Errors]))))
-                    if outcome == HeavyRight:
-                        # Balls on the left side of the scale are not heavy.
-                        s.add(Implies(weigh_left_expr(weigh, ball), Not(truth_table_bvar(ix, ball, Heavy))))
-                        # Balls on the right side of the scale are not light.
-                        s.add(Implies(weigh_right_expr(weigh, ball), Not(truth_table_bvar(ix, ball, Light))))
-                    else:
-                        # Balls on the left side of the scale are not light.
-                        s.add(Implies(weigh_left_expr(weigh, ball), Not(truth_table_bvar(ix, ball, Light))))
-                        # Balls on the right side of the scale are not heavy.
-                        s.add(Implies(weigh_right_expr(weigh, ball), Not(truth_table_bvar(ix, ball, Heavy))))
+
+                    # Balls on the heavy side of the scale are not light.
+                    heavy_side_expr = weigh_left_expr(weigh, ball) if outcome == HeavyLeft else weigh_right_expr(weigh, ball)
+                    s.add(Implies(heavy_side_expr, Not(truth_table_bvar(ix, ball, Light))))
+
+                    # Balls on the light side of the scale are not heavy.
+                    light_side_expr = weigh_left_expr(weigh, ball) if outcome == LightLeft else weigh_right_expr(weigh, ball)
+                    s.add(Implies(light_side_expr, Not(truth_table_bvar(ix, ball, Heavy))))
 
     # Symmetry breaking constraint.
     s.add(weigh_pair_bvar(0, 0, 1))
@@ -105,42 +107,42 @@ def main():
     if solver_result == sat:
         m = s.model()
 
+        # Extract the sets of left and right balls for each weighing.
+        weigh_left_right = [([ball for ball in range(num_balls) if m.eval(weigh_left_expr(weigh, ball))],
+                             [ball for ball in range(num_balls) if m.eval(weigh_right_expr(weigh, ball))])
+                            for weigh in range(num_weighings)]
+
+        # Extract the result for each truth table row.
+        tt_result = [[f'{ball}{error}' for ball, error in ball_error_set if m[truth_table_bvar(ix, ball, error)]] for ix in range(tt_rows)]
+
+        # Print the solution.
         print()
         print('Solution:')
         for weigh in range(num_weighings):
-            left_balls = [ball for ball in range(num_balls) if m.eval(weigh_left_expr(weigh, ball))]
-            right_balls = [ball for ball in range(num_balls) if m.eval(weigh_right_expr(weigh, ball))]
-            holdout_balls = [ball for ball in range(num_balls) if m.eval(weigh_holdout_expr(weigh, ball))]
-            print(f'Weighing {weigh}: {pretty_list(left_balls)} {"".join(Outcomes)} {pretty_list(right_balls)} holdout={pretty_list(holdout_balls)}')
+            print(f'W{weigh}: {pretty_list(weigh_left_right[weigh][0])} {"".join(Outcomes)} {pretty_list(weigh_left_right[weigh][1])}')
 
         print()
         print('Truth Table:')
         print("  ".join(['ix'] + [f'W{weigh}' for weigh in range(num_weighings)] + [' Result']))
-        for ix in range(tt_rows):
-            outcomes = [f'{ball}{error}' for error in Errors for ball in range(num_balls) if m[truth_table_bvar(ix, ball, error)]]
-            print("   ".join([f'{ix:>2}'] + ix_to_symbols(ix) + outcomes))
+        for ix, result in enumerate(tt_result):
+            print("   ".join([f'{ix:>2}'] + ix_to_symbols(ix) + result))
 
-        # Test the result.
+        # Test the solution.
         correct_results = 0
         incorrect_results = 0
-        for ball in range(num_balls):
-            for error in Errors:
-                print()
-                print(f'Test {ball}{error}:')
-                weigh_results = []
-                for weigh in range(num_weighings):
-                    left_set = [left_ball for left_ball in range(num_balls) if m.eval(weigh_left_expr(weigh, left_ball))]
-                    right_set = [right_ball for right_ball in range(num_balls) if m.eval(weigh_right_expr(weigh, right_ball))]
-                    weigh_results.append(weigh_result(left_set, right_set, ball, error))
-                    print(f'    W{weigh}: {pretty_list(left_set)} {weigh_results[-1]} {pretty_list(right_set)}')
-                tt_ix = symbols_to_ix(weigh_results)
-                tt_outcome = [f'{tt_ball}{tt_error}' for tt_error in Errors for tt_ball in range(num_balls) if m[truth_table_bvar(tt_ix, tt_ball, tt_error)]]
-                if len(tt_outcome) == 1 and tt_outcome[0] == f'{ball}{error}':
-                    print(f'    Truth table result: {tt_outcome} is correct')
-                    correct_results = correct_results + 1
-                else:
-                    print(f'    Truth table result: {tt_outcome} is INCORRECT, expected {ball}{error}')
-                    incorrect_results = incorrect_results + 1
+        for ball, error in ball_error_set:
+            print()
+            print(f'Test {ball}{error}:')
+            weigh_outcomes = [weigh_outcome(*weigh_left_right[weigh], ball, error) for weigh in range(num_weighings)]
+            for weigh in range(num_weighings):
+                print(f'    W{weigh}: {pretty_list(weigh_left_right[weigh][0])} {weigh_outcomes[weigh]} {pretty_list(weigh_left_right[weigh][1])}')
+            tt_ix = symbols_to_ix(weigh_outcomes)
+            if len(tt_result[tt_ix]) == 1 and tt_result[tt_ix][0] == f'{ball}{error}':
+                print(f'    Truth table result: {tt_result[tt_ix]} is correct')
+                correct_results = correct_results + 1
+            else:
+                print(f'    Truth table result: {tt_result[tt_ix]} is INCORRECT, expected {ball}{error}')
+                incorrect_results = incorrect_results + 1
 
         print()
         print(f'Total correct results: {correct_results}')
