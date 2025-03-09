@@ -122,8 +122,21 @@ def solve(num_balls, num_weighings):
                     light_side_expr = wl_expr(weigh, ball) if outcome == LightLeft else wr_expr(weigh, ball)
                     s.add(Implies(light_side_expr, Not(truth_table_bvar(ix, ball, Heavy))))
 
-    # Symmetry breaking constraint. The 0'th weighing should have (at least) ball 0 on the left side and ball 1 on the right side.
+    # Symmetry breaking constraints:
+
+    # The 0'th weighing should have (at least) ball 0 on the left side and ball 1 on the right side.
     s.add(weigh_pair_bvar(0, 0, 1))
+
+    # The 0'th weighing should have (at least) ball N-1 in the holdout set.
+    s.add(wh_expr(0, num_balls - 1))
+
+    # Any additional balls in weighing 0 should be added to the scale in ascending order.
+    # Pair (0,1) is already on the scale. Next is (2,3), then (4,5), and so forth.
+    # This is accomplished by adding a constraint that each pair implies the previous pair.
+    s.add([Implies(weigh_pair_bvar(0, ball - 1, ball), weigh_pair_bvar(0, ball - 3, ball - 2)) for ball in range(3, num_balls, 2)])
+
+    # Pairs of the form (m, n != m+1) should never be weighed in weighing 0.
+    s.add([Not(weigh_pair_bvar(0, m, n)) for m in range(num_balls) for n in range(num_balls) if (m % 2 == 1) or (n % 2 == 0) or (n != m + 1)])
 
     # Solve the model.
     solver_result = s.check()
