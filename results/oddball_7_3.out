@@ -1,0 +1,123 @@
+Solving for 7 balls and 3 weighings
+
+Solution:
+W0: [ 0,  2] <=> [ 1,  3]
+W1: [ 3,  5] <=> [ 1,  4]
+W2: [ 4,  5] <=> [ 0,  6]
+
+Truth Table:
+ix  W0  W1  W2   Result
+ 0   <   <   <
+ 1   <   <   =   1+
+ 2   <   <   >
+ 3   <   =   <
+ 4   <   =   =   2-
+ 5   <   =   >   0-
+ 6   <   >   <
+ 7   <   >   =   3+
+ 8   <   >   >
+ 9   =   <   <   5-
+10   =   <   =
+11   =   <   >   4+
+12   =   =   <   6+
+13   =   =   =
+14   =   =   >   6-
+15   =   >   <   4-
+16   =   >   =
+17   =   >   >   5+
+18   >   <   <
+19   >   <   =   3-
+20   >   <   >
+21   >   =   <   0+
+22   >   =   =   2+
+23   >   =   >
+24   >   >   <
+25   >   >   =   1-
+26   >   >   >
+
+Test 0-:
+    W0: [ 0,  2] < [ 1,  3]
+    W1: [ 3,  5] = [ 1,  4]
+    W2: [ 4,  5] > [ 0,  6]
+    Truth table result: ['0-'] is correct
+
+Test 0+:
+    W0: [ 0,  2] > [ 1,  3]
+    W1: [ 3,  5] = [ 1,  4]
+    W2: [ 4,  5] < [ 0,  6]
+    Truth table result: ['0+'] is correct
+
+Test 1-:
+    W0: [ 0,  2] > [ 1,  3]
+    W1: [ 3,  5] > [ 1,  4]
+    W2: [ 4,  5] = [ 0,  6]
+    Truth table result: ['1-'] is correct
+
+Test 1+:
+    W0: [ 0,  2] < [ 1,  3]
+    W1: [ 3,  5] < [ 1,  4]
+    W2: [ 4,  5] = [ 0,  6]
+    Truth table result: ['1+'] is correct
+
+Test 2-:
+    W0: [ 0,  2] < [ 1,  3]
+    W1: [ 3,  5] = [ 1,  4]
+    W2: [ 4,  5] = [ 0,  6]
+    Truth table result: ['2-'] is correct
+
+Test 2+:
+    W0: [ 0,  2] > [ 1,  3]
+    W1: [ 3,  5] = [ 1,  4]
+    W2: [ 4,  5] = [ 0,  6]
+    Truth table result: ['2+'] is correct
+
+Test 3-:
+    W0: [ 0,  2] > [ 1,  3]
+    W1: [ 3,  5] < [ 1,  4]
+    W2: [ 4,  5] = [ 0,  6]
+    Truth table result: ['3-'] is correct
+
+Test 3+:
+    W0: [ 0,  2] < [ 1,  3]
+    W1: [ 3,  5] > [ 1,  4]
+    W2: [ 4,  5] = [ 0,  6]
+    Truth table result: ['3+'] is correct
+
+Test 4-:
+    W0: [ 0,  2] = [ 1,  3]
+    W1: [ 3,  5] > [ 1,  4]
+    W2: [ 4,  5] < [ 0,  6]
+    Truth table result: ['4-'] is correct
+
+Test 4+:
+    W0: [ 0,  2] = [ 1,  3]
+    W1: [ 3,  5] < [ 1,  4]
+    W2: [ 4,  5] > [ 0,  6]
+    Truth table result: ['4+'] is correct
+
+Test 5-:
+    W0: [ 0,  2] = [ 1,  3]
+    W1: [ 3,  5] < [ 1,  4]
+    W2: [ 4,  5] < [ 0,  6]
+    Truth table result: ['5-'] is correct
+
+Test 5+:
+    W0: [ 0,  2] = [ 1,  3]
+    W1: [ 3,  5] > [ 1,  4]
+    W2: [ 4,  5] > [ 0,  6]
+    Truth table result: ['5+'] is correct
+
+Test 6-:
+    W0: [ 0,  2] = [ 1,  3]
+    W1: [ 3,  5] = [ 1,  4]
+    W2: [ 4,  5] > [ 0,  6]
+    Truth table result: ['6-'] is correct
+
+Test 6+:
+    W0: [ 0,  2] = [ 1,  3]
+    W1: [ 3,  5] = [ 1,  4]
+    W2: [ 4,  5] < [ 0,  6]
+    Truth table result: ['6+'] is correct
+
+Total correct results: 14
+Total incorrect results: 0

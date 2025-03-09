@@ -1,0 +1,50 @@
+Solving for 3 balls and 2 weighings
+
+Solution:
+W0: [ 0] <=> [ 1]
+W1: [ 2] <=> [ 1]
+
+Truth Table:
+ix  W0  W1   Result
+ 0   <   <   1+
+ 1   <   =   0-
+ 2   <   >
+ 3   =   <   2-
+ 4   =   =
+ 5   =   >   2+
+ 6   >   <
+ 7   >   =   0+
+ 8   >   >   1-
+
+Test 0-:
+    W0: [ 0] < [ 1]
+    W1: [ 2] = [ 1]
+    Truth table result: ['0-'] is correct
+
+Test 0+:
+    W0: [ 0] > [ 1]
+    W1: [ 2] = [ 1]
+    Truth table result: ['0+'] is correct
+
+Test 1-:
+    W0: [ 0] > [ 1]
+    W1: [ 2] > [ 1]
+    Truth table result: ['1-'] is correct
+
+Test 1+:
+    W0: [ 0] < [ 1]
+    W1: [ 2] < [ 1]
+    Truth table result: ['1+'] is correct
+
+Test 2-:
+    W0: [ 0] = [ 1]
+    W1: [ 2] < [ 1]
+    Truth table result: ['2-'] is correct
+
+Test 2+:
+    W0: [ 0] = [ 1]
+    W1: [ 2] > [ 1]
+    Truth table result: ['2+'] is correct
+
+Total correct results: 6
+Total incorrect results: 0
