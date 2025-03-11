@@ -1,75 +1,76 @@
-Solving for 3 balls and 3 weighings
+Solving for 3 balls and 3 weighings.
+Using symmetry breaking strategy TruthTableAscending.
 
 Solution:
 W0: [ 0] <=> [ 1]
-W1: [ 0] <=> [ 1]
-W2: [ 0] <=> [ 2]
+W1: [ 1] <=> [ 2]
+W2: [ 2] <=> [ 1]
 
 Truth Table:
 ix  W0  W1  W2   Result
- 0   <   <   <   0-
- 1   <   <   =   1+
+ 0   <   <   <
+ 1   <   <   =
  2   <   <   >
  3   <   =   <
- 4   <   =   =
+ 4   <   =   =   0-
  5   <   =   >
- 6   <   >   <
+ 6   <   >   <   1+
  7   <   >   =
  8   <   >   >
  9   =   <   <
 10   =   <   =
-11   =   <   >
-12   =   =   <   2+
+11   =   <   >   2+
+12   =   =   <
 13   =   =   =
-14   =   =   >   2-
-15   =   >   <
+14   =   =   >
+15   =   >   <   2-
 16   =   >   =
 17   =   >   >
 18   >   <   <
 19   >   <   =
-20   >   <   >
+20   >   <   >   1-
 21   >   =   <
-22   >   =   =
+22   >   =   =   0+
 23   >   =   >
 24   >   >   <
-25   >   >   =   1-
-26   >   >   >   0+
+25   >   >   =
+26   >   >   >
 
 Test 0-:
     W0: [ 0] < [ 1]
-    W1: [ 0] < [ 1]
-    W2: [ 0] < [ 2]
-    Truth table result: ['0-'] is correct
+    W1: [ 1] = [ 2]
+    W2: [ 2] = [ 1]
+    Truth table row=[<, =, =] ix=4 result=[0-] is correct
 
 Test 0+:
     W0: [ 0] > [ 1]
-    W1: [ 0] > [ 1]
-    W2: [ 0] > [ 2]
-    Truth table result: ['0+'] is correct
+    W1: [ 1] = [ 2]
+    W2: [ 2] = [ 1]
+    Truth table row=[>, =, =] ix=22 result=[0+] is correct
 
 Test 1-:
     W0: [ 0] > [ 1]
-    W1: [ 0] > [ 1]
-    W2: [ 0] = [ 2]
-    Truth table result: ['1-'] is correct
+    W1: [ 1] < [ 2]
+    W2: [ 2] > [ 1]
+    Truth table row=[>, <, >] ix=20 result=[1-] is correct
 
 Test 1+:
     W0: [ 0] < [ 1]
-    W1: [ 0] < [ 1]
-    W2: [ 0] = [ 2]
-    Truth table result: ['1+'] is correct
+    W1: [ 1] > [ 2]
+    W2: [ 2] < [ 1]
+    Truth table row=[<, >, <] ix=6 result=[1+] is correct
 
 Test 2-:
     W0: [ 0] = [ 1]
-    W1: [ 0] = [ 1]
-    W2: [ 0] > [ 2]
-    Truth table result: ['2-'] is correct
+    W1: [ 1] > [ 2]
+    W2: [ 2] < [ 1]
+    Truth table row=[=, >, <] ix=15 result=[2-] is correct
 
 Test 2+:
     W0: [ 0] = [ 1]
-    W1: [ 0] = [ 1]
-    W2: [ 0] < [ 2]
-    Truth table result: ['2+'] is correct
+    W1: [ 1] < [ 2]
+    W2: [ 2] > [ 1]
+    Truth table row=[=, <, >] ix=11 result=[2+] is correct
 
 Total correct results: 6
 Total incorrect results: 0
