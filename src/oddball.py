@@ -233,8 +233,8 @@ def solve(num_balls, num_weighings, symmetry_breaking_strategy=SymmetryBreakingS
         print('Solution:')
 
         # Print the balls involved in each weighing.
-        for weigh in range(num_weighings):
-            print(f'W{weigh}: {pretty_list(weigh_left_right[weigh][0])} {"".join(Outcomes)} {pretty_list(weigh_left_right[weigh][1])}')
+        for weigh, (left, right) in enumerate(weigh_left_right):
+            print(f'W{weigh}: {pretty_list(left)} {"".join(Outcomes)} {pretty_list(right)}')
 
         # Print the truth table mapping weighing outcomes to ball-error combinations.
         print()
@@ -253,21 +253,22 @@ def solve(num_balls, num_weighings, symmetry_breaking_strategy=SymmetryBreakingS
             print(f'Test {ball}{error}:')
 
             # Simulate each weighing.
-            weigh_outcomes = [weigh_outcome(*weigh_left_right[weigh], ball, error) for weigh in range(num_weighings)]
+            weigh_outcomes = [weigh_outcome(left, right, ball, error) for left, right in weigh_left_right]
 
-            for weigh in range(num_weighings):
-                print(f'    W{weigh}: {pretty_list(weigh_left_right[weigh][0])} {weigh_outcomes[weigh]} {pretty_list(weigh_left_right[weigh][1])}')
+            for weigh, (left, right) in enumerate(weigh_left_right):
+                print(f'    W{weigh}: {pretty_list(left)} {weigh_outcomes[weigh]} {pretty_list(right)}')
 
             # Look up the ball-error combination in the truth table.
             tt_ix = symbols_to_ix(weigh_outcomes)
 
             # Confirm the result is the ball-error combination being tested.
             pretty_tt_result = "[" + ", ".join([f'{ball}{error}' for ball, error in tt_result[tt_ix]]) + "]"
+            pretty_outcomes = "[" + ", ".join(weigh_outcomes) + "]"
             if len(tt_result[tt_ix]) == 1 and tt_result[tt_ix][0] == (ball, error):
-                print(f'    Truth table result: {pretty_tt_result} is correct')
+                print(f'    Truth table row={pretty_outcomes} ix={tt_ix} result={pretty_tt_result} is correct')
                 correct_results = correct_results + 1
             else:
-                print(f'    Truth table result: {pretty_tt_result} is INCORRECT, expected {ball}{error}')
+                print(f'    Truth table row={pretty_outcomes} ix={tt_ix} result={pretty_tt_result} is INCORRECT, expected [{ball}{error}]')
                 incorrect_results = incorrect_results + 1
 
         print()
