@@ -287,7 +287,7 @@ def main():
     parser = argparse.ArgumentParser(description="Find the incorrectly-weighted ball out of a set of N, using only W weighings")
     parser.add_argument("N", type=int, help="number of balls in the set")
     parser.add_argument("W", type=int, help="number of weighings allowed")
-    parser.add_argument("--strategy", choices=SymmetryBreakingStrategies, default=StrategyTruthTableAscending)
+    parser.add_argument("--strategy", choices=SymmetryBreakingStrategies, default=StrategyTruthTableAscending, help="symmetry breaking strategy")
     args = parser.parse_args()
     solve(args.N, args.W, args.strategy)
 
