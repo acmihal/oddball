@@ -208,6 +208,9 @@ def solve(num_balls, num_weighings, symmetry_breaking_strategy=SymmetryBreakingS
         # The error 0+ should not occur in the top half of the truth table. Instead, 0- must be in the top half and 0+ in the bottom half.
         s.add([Not(truth_table_bvar(ix, 0, Heavy)) for ix in range(half_tt_rows)])
 
+    with open("odd.smt2", "w", encoding="ascii") as smt2_file:
+        smt2_file.write(s.to_smt2())
+
     # Solve the model.
     solver_result = s.check()
 
