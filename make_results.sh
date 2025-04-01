@@ -17,7 +17,7 @@ set -x
 #    oddball $i 4 | tee results/oddball_${i}_4.out
 #done
 
-for i in {3..121}
+for i in {55..121}
 do
     oddball $i 5 | tee results/oddball_${i}_5.out
 done

@@ -1,7 +1,5 @@
 import argparse
-from itertools import product
-from functools import partial
-from z3 import AtMost, Bool, Implies, Not, Or, Solver, sat
+from z3 import And, Const, EnumSort, Goal, If, Implies, Int, Or, sat, Sum, Tactic, Then
 
 # Possible outcomes of a weighing.
 HeavyRight = '<'
@@ -15,36 +13,6 @@ Outcomes = [HeavyRight, Balance, HeavyLeft]
 Light = '-'
 Heavy = '+'
 Errors = [Light, Heavy]
-
-# Symmetry breaking strategies
-StrategyWeigh0Ascending = 'Weigh0Ascending'
-StrategyTruthTableAscending = 'TruthTableAscending'
-StrategyNone = 'NoSymmetryBreaking'
-SymmetryBreakingStrategies = [StrategyWeigh0Ascending, StrategyTruthTableAscending, StrategyNone]
-
-# Boolean variable, when true, indicates that weighing #weigh features
-# left_ball on the left side of the balance scale and right_ball on the right side.
-def weigh_pair_bvar(weigh, left_ball, right_ball):
-    return Bool(f'w{weigh}_l{left_ball}_r{right_ball}')
-
-# Boolean expression, when true, indicates that weighing #weigh features
-# ball on the left side of the balance scale.
-def weigh_left_expr(weigh, ball, num_balls):
-    return Or([weigh_pair_bvar(weigh, ball, other) for other in range(num_balls)])
-
-# Boolean expression, when true, indicates that weighing #weigh features
-# ball on the right side of the balance scale.
-def weigh_right_expr(weigh, ball, num_balls):
-    return Or([weigh_pair_bvar(weigh, other, ball) for other in range(num_balls)])
-
-# Boolean expression, when true, indicates that weighing #weigh does not include ball.
-# Ball is instead in the holdout set during weighing #weigh.
-def weigh_holdout_expr(weigh, ball, num_balls):
-    return Not(Or(weigh_left_expr(weigh, ball, num_balls), weigh_right_expr(weigh, ball, num_balls)))
-
-# Boolean variable, when true, indicates that truth table row ix has the result of ball with error.
-def truth_table_bvar(ix, ball, error):
-    return Bool(f'tt{ix}_b{ball}{error}')
 
 # Converts a truth table row index to a list of Outcomes symbols.
 # e.g. ix=0 symbols=['<', ...]
@@ -81,32 +49,81 @@ def weigh_outcome(left_set, right_set, ball, error):
 def pretty_list(ball_list):
     return f'[{", ".join([f"{ball:>2}" for ball in ball_list])}]'
 
-# Solve for the given number of balls and weighings.
-def solve(num_balls, num_weighings, symmetry_breaking_strategy=SymmetryBreakingStrategies[0]):
-    print(f'Solving for {num_balls} balls and {num_weighings} weighings.')
-    print(f'Using symmetry breaking strategy {symmetry_breaking_strategy}.')
+def print_formula(formula, indent=0, recursive=True):
+    i0 = '  ' * (indent)
+    i1 = '  ' * (indent + 1)
 
-    # Partials for commonly used functions dependent on the num_balls parameter.
-    wl_expr = partial(weigh_left_expr, num_balls=num_balls)
-    wr_expr = partial(weigh_right_expr, num_balls=num_balls)
-    wh_expr = partial(weigh_holdout_expr, num_balls=num_balls)
+    formula_str_single_line = ''.join(str(formula).splitlines())
+    print(f'{i0}f = {formula_str_single_line}')
+
+    if (recursive):
+        print(f'{i1}decl = {formula.decl()}')
+        print(f'{i1}num_args = {formula.num_args()}')
+        print(f'{i1}params = {formula.params()}')
+
+        arg_list = [formula.arg(arg_ix) for arg_ix in range(formula.num_args())]
+        print(f'{i1}args = {arg_list}')
+
+        for arg_ix, arg in enumerate(arg_list):
+            print(f'{i1}arg {arg_ix}')
+            print_formula(arg, indent+2)
+
+def export_smt2(solver, filename):
+    with open(filename, 'w', encoding='ascii') as smt2_file:
+        smt2_file.write(solver.to_smt2())
+
+def export_cnf(solver, filename):
+    # Create a goal and add constraints.
+    goal = Goal()
+    goal.add(solver.assertions())
+
+    # Apply a set of tactics to convert a purely CNF formulation.
+    tactic = Then('lia2card', 'dt2bv', 'bit-blast', 'card2bv', 'tseitin-cnf', 'sat-preprocess')
+    subgoal = tactic(goal)
+    formulas = subgoal[0]
+
+    # Collect all variables in all formulas.
+    all_vars = set()
+    for f in formulas:
+        print_formula(f)
+
+# Solve for the given number of balls and weighings.
+def solve(num_balls, num_weighings):
+    print(f'Solving for {num_balls} balls and {num_weighings} weighings.')
+
+    s = Tactic('qffd').solver()
+
+    location_sort, (left, right, hold) = EnumSort('location', ['L', 'R', 'H'])
+
+    # Where is each ball for each weighing.
+    loc_vars = [[Const(f'b{ball}_w{weighing}', location_sort) for weighing in range(num_weighings)] for ball in range(num_balls)]
+
+    # Truth Table row result: [light results in decreasing ball order], [no result], [heavy results in increasing ball order]
+    tt_sort, tt_tuple = EnumSort('tt', [f'{x}{Light}' for x in range(num_balls-1, -1, -1)] + [' '] + [f'{x}{Heavy}' for x in range(num_balls)])
+
+    tt_no_outcome = tt_tuple[num_balls]
+
+    def tt_light(ball):
+        return tt_tuple[num_balls - (ball+1)]
+
+    def tt_heavy(ball):
+        return tt_tuple[num_balls + (ball+1)]
+
+    def tt_opposite(tt):
+        ix = tt_tuple.index(tt) - num_balls
+        return tt_tuple[num_balls - ix]
+
+    def tt_to_ball_error(tt):
+        ix = tt_tuple.index(tt) - num_balls
+        if ix < 0:
+            return (-ix - 1, Light)
+        elif ix > 0:
+            return (ix - 1, Heavy)
+        else:
+            return (0, Balance)
 
     # Number of rows in the truth table.
     tt_rows = len(Outcomes) ** num_weighings
-
-    # List of all possible ball-error combinations.
-    ball_error_list = list(product(range(num_balls), Errors))
-
-    if len(ball_error_list) > (tt_rows - 3):
-        # There are more potential errors than there are possible outcomes of the weighings. Trivially unsolvable.
-        # Explanation of why 3 tt_rows are not possible:
-        # 1. The center row of the truth table, corresponding to all weighings returning Balance (=, =, =, ...)
-        #    only identifies that the error ball is in the holdout set for every weighing but does not determine
-        #    whether the error ball is Heavy or Light. Therefore this truth table row cannot provide a result.
-        # 2. FIXME
-        # 3. FIXME
-        print(f'No solution exists for {num_balls} balls and {num_weighings} weighings (trivially unsolvable).')
-        return False
 
     # Number of rows in the top half on the truth table.
     # The truth table is symmetrical so we only solve for the top half.
@@ -114,24 +131,21 @@ def solve(num_balls, num_weighings, symmetry_breaking_strategy=SymmetryBreakingS
     # Inverting the outcome of each weighing identifies the same error ball but with the opposite error.
     half_tt_rows = tt_rows // 2
 
-    # Maximum number of rows without any result in the top half of the truth table.
-    half_slack = half_tt_rows - num_balls
-
-    # List of all possible truth_table_bvar index tuples.
-    tt_bvar_list = list(product(range(half_tt_rows), range(num_balls), Errors))
-
-    # Initialize the solver and begin to add constraints.
-    s = Solver()
-
-    # There is a single instance of each ball. A ball cannot be on the scale multiple times in a single weighing.
-    s.add([AtMost(*wl_expr(weigh, ball).children(), *wr_expr(weigh, ball).children(), 1)
-           for ball in range(num_balls) for weigh in range(num_weighings)])
-
-    # Each truth table row implies at most one result, but can imply no result.
-    s.add([AtMost(*[truth_table_bvar(ix, ball, error) for ball, error in ball_error_list], 1) for ix in range(half_tt_rows)])
+    tt_vars = [Const(f'tt{row}', tt_sort) for row in range(half_tt_rows)]
 
     # Each ball (with either error) must appear in at least one truth table row.
-    s.add([Or([truth_table_bvar(ix, ball, error) for ix in range(half_tt_rows) for error in Errors]) for ball in range(num_balls)])
+    s.add([Or([Or(tt_vars[row]==tt_light(ball), tt_vars[row]==tt_heavy(ball)) for row in range(half_tt_rows)]) for ball in range(num_balls)])
+
+    # Each weighing must have the same number of balls on each side of the scale.
+    sum_left_vars = [Int(f'l{weighing}') for weighing in range(num_weighings)]
+    sum_right_vars = [Int(f'r{weighing}') for weighing in range(num_weighings)]
+    s.add([sum_left_vars[weighing] == sum_right_vars[weighing] for weighing in range(num_weighings)])
+    s.add([And(0 <= sum_left_vars[weighing], sum_left_vars[weighing] <= num_balls//2) for weighing in range(num_weighings)])
+    s.add([And(0 <= sum_right_vars[weighing], sum_right_vars[weighing] <= num_balls//2) for weighing in range(num_weighings)])
+
+    #s.add([Sum([loc_vars[ball][weighing]==left for ball in range(num_balls)]) == Sum([loc_vars[ball][weighing]==right for ball in range(num_balls)]) for weighing in range(num_weighings)])
+    s.add([sum_left_vars[weighing] == Sum([loc_vars[ball][weighing]==left for ball in range(num_balls)]) for weighing in range(num_weighings)])
+    s.add([sum_right_vars[weighing] == Sum([loc_vars[ball][weighing]==right for ball in range(num_balls)]) for weighing in range(num_weighings)])
 
     # Weighing outcomes imply truth table results.
     for ix in range(half_tt_rows):
@@ -139,77 +153,37 @@ def solve(num_balls, num_weighings, symmetry_breaking_strategy=SymmetryBreakingS
             for ball in range(num_balls):
                 if outcome == Balance:
                     # The result is not any of the balls on either side of the scale.
-                    s.add(Implies(Not(wh_expr(weigh, ball)), Not(Or([truth_table_bvar(ix, ball, error) for error in Errors]))))
+                    s.add(Implies(loc_vars[ball][weigh]!=hold, And(tt_vars[ix]!=tt_light(ball), tt_vars[ix]!=tt_heavy(ball))))
                 else:
                     # The result is not any of the balls in the holdout group.
-                    s.add(Implies(wh_expr(weigh, ball), Not(Or([truth_table_bvar(ix, ball, error) for error in Errors]))))
+                    s.add(Implies(loc_vars[ball][weigh]==hold, And(tt_vars[ix]!=tt_light(ball), tt_vars[ix]!=tt_heavy(ball))))
 
                     # Balls on the heavy side of the scale are not light.
-                    heavy_side_expr = wl_expr(weigh, ball) if outcome == HeavyLeft else wr_expr(weigh, ball)
-                    s.add(Implies(heavy_side_expr, Not(truth_table_bvar(ix, ball, Light))))
+                    s.add(Implies(loc_vars[ball][weigh]==(left if outcome==HeavyLeft else right), tt_vars[ix]!=tt_light(ball)))
 
                     # Balls on the light side of the scale are not heavy.
-                    light_side_expr = wl_expr(weigh, ball) if outcome == LightLeft else wr_expr(weigh, ball)
-                    s.add(Implies(light_side_expr, Not(truth_table_bvar(ix, ball, Heavy))))
+                    s.add(Implies(loc_vars[ball][weigh]==(left if outcome==LightLeft else right), tt_vars[ix]!=tt_heavy(ball)))
 
     # Symmetry breaking constraints:
 
-    if symmetry_breaking_strategy == StrategyWeigh0Ascending:
-        # Weigh0Ascending strategy:
-        #   Balls in the 0'th weighing should be added to the scale in ascending order.
-        #   Weighing 0 must have (at least) ball 0 on the left side and ball 1 on the right side.
-        #   The next allowable pair is (2, 3), followed by (4, 5) and so on.
+    # Last-ball-heavy should not appear in the top half of the truth table.
+    s.add([tt_vars[ix] != tt_tuple[-1] for ix in range(half_tt_rows)])
 
-        # The 0'th weighing should have (at least) ball 0 on the left side and ball 1 on the right side.
-        s.add(weigh_pair_bvar(0, 0, 1))
+    # Tracking variable for the most recent ball error result.
+    max_vars = [Const(f'max{row}', tt_sort) for row in range(half_tt_rows)]
+    s.add(max_vars[0]==tt_vars[0])
+    s.add([If(tt_vars[ix]==tt_no_outcome, max_vars[ix]==max_vars[ix-1], max_vars[ix]==tt_vars[ix]) for ix in range(1, half_tt_rows)])
 
-        # The 0'th weighing should have (at least) ball N-1 in the holdout set.
-        s.add(wh_expr(0, num_balls - 1))
+    def successor(lhs, rhs, ix=num_balls-1):
+        if ix == 0:
+            return If(Or(rhs==tt_light(ix), rhs==tt_heavy(ix)), lhs==tt_no_outcome, Or(lhs==tt_light(num_balls-1), lhs==tt_heavy(num_balls-1)))
+        else:
+            return If(Or(rhs==tt_light(ix), rhs==tt_heavy(ix)), Or(lhs==tt_light(ix-1), lhs==tt_heavy(ix-1)), successor(lhs, rhs, ix-1))
 
-        # Any additional balls in weighing 0 should be added to the scale in ascending order.
-        # Pair (0,1) is already on the scale. Next is (2,3), then (4,5), and so forth.
-        # This is accomplished by adding a constraint that each pair implies the previous pair.
-        s.add([Implies(weigh_pair_bvar(0, ball - 1, ball), weigh_pair_bvar(0, ball - 3, ball - 2)) for ball in range(3, num_balls, 2)])
+    # Truth table rows can be either no-outcome, or the successor to the most recent ball.
+    s.add([Or(tt_vars[ix]==tt_no_outcome, successor(tt_vars[ix], max_vars[ix-1])) for ix in range(1, half_tt_rows)])
 
-        # Pairs of the form (m odd, *), (*, n even), (m, n != m+1) should never be weighed in weighing 0.
-        s.add([Not(weigh_pair_bvar(0, m, n)) for m in range(num_balls) for n in range(num_balls) if (m % 2 == 1) or (n % 2 == 0) or (n != m + 1)])
-
-    elif symmetry_breaking_strategy == StrategyTruthTableAscending:
-        # TruthTableAscending strategy:
-        #   The results in the top half of the truth table should run sequentially increasing by ball number.
-        #   The outcome 0- should always appear in the top half.
-        #   The second half of the truth table will have the opposite errors in decreasing sequence by ball number.
-
-        # Ball N may not appear in row R if N > R, because then there are not enough earlier rows [0, R) for balls [0, N).
-        # Likewise, if N + half_slack > R, then there aren't enough later rows [R+1, half_tt_rows) for balls [N+1, num_balls).
-        # Example: num_balls=6, num_weighings=3, half_tt_rows=13, half_slack=7
-        #      0   1   2   3   4   5
-        # 0        X   X   X   X   X
-        # 1            X   X   X   X
-        # 2    s           X   X   X
-        # 3    l   s           X   X
-        # 4    a   l   s           X
-        # 5    c   a   l   s        
-        # 6    k   c   a   l   s    
-        # 7        k   c   a   l   s
-        # 8    X       k   c   a   l
-        # 9    X   X       k   c   a
-        # 10   X   X   X       k   c
-        # 11   X   X   X   X       k
-        # 12   X   X   X   X   X    
-        s.add([Not(truth_table_bvar(ix, ball, error)) for ix, ball, error in tt_bvar_list if ball > ix or ix > ball + half_slack])
-
-        # If ball N appears in row R (with either error), then no lower row may have a higher-numbered ball (with either error).
-        s.add([Implies(truth_table_bvar(ix, ball, error),
-                       Not(Or([truth_table_bvar(lower_ix, higher_ball, any_error)
-                               for lower_ix in range(ix) for higher_ball in range(ball + 1, num_balls) for any_error in Errors])))
-               for ix, ball, error in tt_bvar_list])
-
-        # The error 0+ should not occur in the top half of the truth table. Instead, 0- must be in the top half and 0+ in the bottom half.
-        s.add([Not(truth_table_bvar(ix, 0, Heavy)) for ix in range(half_tt_rows)])
-
-    with open("odd.smt2", "w", encoding="ascii") as smt2_file:
-        smt2_file.write(s.to_smt2())
+    #export_cnf(s, 'odd.cnf')
 
     # Solve the model.
     solver_result = s.check()
@@ -219,17 +193,16 @@ def solve(num_balls, num_weighings, symmetry_breaking_strategy=SymmetryBreakingS
         m = s.model()
 
         # Extract the sets of left and right balls for each weighing.
-        weigh_left_right = [([ball for ball in range(num_balls) if m.eval(wl_expr(weigh, ball))],
-                             [ball for ball in range(num_balls) if m.eval(wr_expr(weigh, ball))])
+        weigh_left_right = [([ball for ball in range(num_balls) if m.eval(loc_vars[ball][weigh]==left)],
+                             [ball for ball in range(num_balls) if m.eval(loc_vars[ball][weigh]==right)])
                             for weigh in range(num_weighings)]
 
         # Extract the result for each truth table row.
-        tt_result = [[(ball, error) for ball, error in ball_error_list if m[truth_table_bvar(ix, ball, error)]] for ix in range(half_tt_rows)]
+        tt_result = [m.eval(tt_vars[row]) for row in range(half_tt_rows)]
 
         # The second half of the truth table is the reverse of the first half, and implies the opposite errors in each row.
         # The center row of the truth table (all weighing outcomes are Balance) is included with no results.
-        opposite = {Light: Heavy, Heavy: Light}
-        tt_result.extend([[]] + [[(ball, opposite[error]) for ball, error in row] for row in tt_result[::-1]])
+        tt_result.extend([tt_tuple[num_balls]] + [tt_opposite(tt) for tt in tt_result[::-1]])
 
         # Print the solution.
         print()
@@ -244,14 +217,19 @@ def solve(num_balls, num_weighings, symmetry_breaking_strategy=SymmetryBreakingS
         print('Truth Table:')
         print("  ".join(['ix'] + [f'W{weigh}' for weigh in range(num_weighings)] + [' Result']))
         for ix, result in enumerate(tt_result):
-            print("   ".join([f'{ix:>2}'] + ix_to_symbols(ix, num_weighings) + [f'{ball}{error}' for ball, error in result]))
+            print("   ".join([f'{ix:>2}'] + ix_to_symbols(ix, num_weighings) + [str(result)]))
 
         # Test the solution.
         correct_results = 0
         incorrect_results = 0
 
         # Test each ball-error combination.
-        for ball, error in ball_error_list:
+        for tt in tt_tuple:
+            if tt == tt_no_outcome:
+                continue
+
+            ball, error = tt_to_ball_error(tt)
+
             print()
             print(f'Test {ball}{error}:')
 
@@ -265,13 +243,13 @@ def solve(num_balls, num_weighings, symmetry_breaking_strategy=SymmetryBreakingS
             tt_ix = symbols_to_ix(weigh_outcomes)
 
             # Confirm the result is the ball-error combination being tested.
-            pretty_tt_result = "[" + ", ".join([f'{ball}{error}' for ball, error in tt_result[tt_ix]]) + "]"
+            pretty_tt_result = str(tt_result[tt_ix])
             pretty_outcomes = "[" + ", ".join(weigh_outcomes) + "]"
-            if len(tt_result[tt_ix]) == 1 and tt_result[tt_ix][0] == (ball, error):
+            if tt_result[tt_ix] == tt:
                 print(f'    Truth table row={pretty_outcomes} ix={tt_ix} result={pretty_tt_result} is correct')
                 correct_results = correct_results + 1
             else:
-                print(f'    Truth table row={pretty_outcomes} ix={tt_ix} result={pretty_tt_result} is INCORRECT, expected [{ball}{error}]')
+                print(f'    Truth table row={pretty_outcomes} ix={tt_ix} result={pretty_tt_result} is INCORRECT, expected {tt}')
                 incorrect_results = incorrect_results + 1
 
         print()
@@ -291,7 +269,6 @@ def main():
     parser = argparse.ArgumentParser(description="Find the incorrectly-weighted ball out of a set of N, using only W weighings")
     parser.add_argument("N", type=int, help="number of balls in the set")
     parser.add_argument("W", type=int, help="number of weighings allowed")
-    parser.add_argument("--strategy", choices=SymmetryBreakingStrategies, default=StrategyTruthTableAscending, help="symmetry breaking strategy")
     args = parser.parse_args()
-    solve(args.N, args.W, args.strategy)
+    solve(args.N, args.W)
 
