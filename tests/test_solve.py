@@ -1,5 +1,13 @@
-from oddball import solve
+from formulation import Formulation
+from z3 import Solver, sat
 
+def solve(num_balls, num_weighings):
+    f = Formulation(num_balls, num_weighings)
+    solver = Solver()
+    solver.add(f.get_constraints())
+    result = solver.check()
+    return result == sat
+    
 def test_solve_2_1():
     assert not solve(2, 1)
 

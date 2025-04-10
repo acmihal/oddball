@@ -12,11 +12,11 @@ def test_missing_args(capsys):
     assert captured.err.startswith("usage")
 
 def test_provided_args(capsys):
-    testargs = ["oddball", "2", "1"]
+    testargs = ["oddball", "3", "2"]
     with patch.object(sys, 'argv', testargs):
         main()
     captured = capsys.readouterr()
-    assert captured.out.startswith("Solving for 2 balls and 1 weighings")
+    assert captured.out.startswith("Solving for 3 balls and 2 weighings")
 
 def test_help(capsys):
     testargs = ["oddball", "-h"]
