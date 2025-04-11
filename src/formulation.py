@@ -70,6 +70,11 @@ class Formulation:
     def good(self, ix, ball):
         return Not(Or([self.truth_table_bvar(ix, ball, error) for error in self.Errors]))
 
+    # Returns a list of all variables in the formulation.
+    def all_vars(self):
+        return ([self.weigh_pair_bvar(weigh, left_ball, right_ball) for weigh in range(self.num_weighings) for left_ball in range(self.num_balls) for right_ball in range(self.num_balls)] +
+                [self.truth_table_bvar(ix, ball, error) for ix in range(self.half_tt_rows) for ball, error in self.ball_error_list])
+
     # Converts a truth table row index to a list of Outcomes symbols.
     # e.g. ix=0 symbols=['<', ...]
     def ix_to_symbols(self, ix):
@@ -232,7 +237,6 @@ class Formulation:
         weigh_left_right, tt_result = self.model_results(model)
 
         # Print the solution.
-        print()
         print('Solution:')
 
         # Print the balls involved in each weighing.

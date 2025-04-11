@@ -74,12 +74,7 @@ def strategy_weigh_zero_ascending(formulation):
 
     return constraints
 
-def strategy_none(formulation):
-    # A do-nothing strategy.
-    return []
-
 StrategyMap = {'TruthTableOrdering': strategy_truth_table_ordering,
                'ZeroPlus': strategy_zero_plus,
-               'Weigh0Ascending': strategy_weigh_zero_ascending,
-               'None': strategy_none}
+               'Weigh0Ascending': strategy_weigh_zero_ascending}
 

@@ -71,19 +71,13 @@ def export_cnf(formulation, solver, filename):
                     assert is_not(arg), f'Tactics left unexpected formula:\n{print_formula(arg)}'
                     all_vars.add(arg.arg(0).decl().name())
 
-    # Split all the CNF vars into the placement/nonplacement groups.
-    placement_vars = []
-    nonplacement_vars = []
-    for var in all_vars:
-        if formulation.placement_var_by_name(var) is not None:
-            placement_vars.append(var)
-        else:
-            nonplacement_vars.append(var)
+    # Map sorted vars to integers starting at 1.
+    var_to_ix_map = {str(var):ix for ix, var in enumerate(sorted(formulation.all_vars(), key=lambda var: str(var)), start=1)}
 
-    # Map sorted placement vars to integers starting at 1.
-    # Nonplacement vars are numbered after the placement vars and don't need to be sorted.
-    # Enumerating the variables this way allows import to work even if the tactic or finite-domain sort changes.
-    var_to_ix_map = {var:ix for ix, var in enumerate(sorted(placement_vars) + nonplacement_vars, start=1)}
+    # Remaining vars in formulas that are not in the formulation.
+    # The ordering of these variables does not matter.
+    all_vars = all_vars - var_to_ix_map.keys()
+    var_to_ix_map.update({var:ix for ix, var in enumerate(all_vars, start=1 + len(var_to_ix_map))})
 
     with open(filename, 'w', encoding='ascii') as cnf_file:
         # Write cnf header
@@ -118,9 +112,9 @@ def export_cnf(formulation, solver, filename):
             cnf_file.write(' '.join(map(str, literals)) + ' 0\n')
 
 def import_certificate(formulation, filename):
-    # Sorting all of the placement bvars in the formulation by name should match the numbering used in the CNF export.
+    # Sorting all of the bvars in the formulation by name should match the numbering used in the CNF export.
     # One additional list element at the beginning is necessary because CNF starts numbering at 1, not 0.
-    sorted_placement_bvars = [None] + sorted(formulation.placement_bvar_map.values(), key=lambda var: str(var))
+    sorted_all_bvars = [None] + sorted(formulation.all_vars(), key=lambda var: str(var))
 
     assertions = []
 
@@ -132,10 +126,10 @@ def import_certificate(formulation, filename):
             elif line.startswith("v "):
                 var_list = line.rstrip().split()
                 for assignment in map(int, var_list[1:]):
-                    if 0 < assignment and assignment < len(sorted_placement_bvars):
-                        assertions.append(sorted_placement_bvars[assignment])
-                    elif 0 < -assignment and -assignment < len(sorted_placement_bvars):
-                        assertions.append(Not(sorted_placement_bvars[-assignment]))
+                    if 0 < assignment and assignment < len(sorted_all_bvars):
+                        assertions.append(sorted_all_bvars[assignment])
+                    elif 0 < -assignment and -assignment < len(sorted_all_bvars):
+                        assertions.append(Not(sorted_all_bvars[-assignment]))
 
     return assertions
 

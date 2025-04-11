@@ -12,7 +12,7 @@ def main():
     parser = argparse.ArgumentParser(description="Find the incorrectly-weighted ball out of a set of N, using only W weighings")
     parser.add_argument("N", type=int, help="number of balls in the set")
     parser.add_argument("W", type=int, help="number of weighings allowed")
-    parser.add_argument("--strategy", choices=StrategyMap.keys(), action="append", default=['TruthTableOrdering', 'ZeroPlus'], help="symmetry breaking strategy")
+    parser.add_argument("--strategy", choices=StrategyMap.keys(), action="append", help="symmetry breaking strategy")
     parser.add_argument("--tactic", choices=UsableTactics, default=UsableTactics[0], help="solver tactic")
     parser.add_argument("--smt2", type=str, help="export formulation to SMT2 file")
     parser.add_argument("--cnf", type=str, help="export formulation to CNF file")
