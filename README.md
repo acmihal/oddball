@@ -26,6 +26,15 @@ That is, the choice of what to weigh next is not dependent on the outcome of the
     # oddball -h
     # oddball 9 3
 
+The program is also capable of exporting the formulation in CNF format for an external SAT solver:
+
+    # oddball 9 3 --cnf oddball_9_3.cnf --skip-solver
+    # kissat oddball_9_3.cnf | tee oddball_9_3.cert
+
+A certificate produced by an external solver can be reimported to print the solution:
+
+    # oddball 9 3 --cert oddball_9_3.cert
+
 ## Output
 
 The Solution section gives the balls to be weighed for each of the W weighings. For example:
@@ -106,7 +115,30 @@ In weighing 2, ball 0 is not on the scale, so the scale is balanced (outcome **=
 
 The results **<**, **<**, and **=** correspond to row 1 in the truth table, which has the right answer **0-**.
 
+## Details
 
+**Oddball** is implemented in Python using Z3Py. The constraint formulation uses Boolean variables to indicate that a particular pair of balls are on opposite sides of the scale in each weighing. Combined with the result of the weighing, these Boolean variables imply possibilities about which ball is bad.
+
+If the scale is **balanced** then none of the balls on the scale are bad. The bad ball must be in the holdout set that is not on the scale. If the scale is **not balanced** then the balls on the light side of the scale are not heavy, and the balls on the heavy side of the scale are not light.
+
+The goal of the SAT solver is to choose pairs of balls to weigh in each weighing such that each truth table row implies at most one result. Also, each ball-error combination must appear at least once in the truth table.
+
+A collection of symmetry-breaking strategies is available via the **--strategy** parameter. Multiple strategies can be used in combination, but not all strategies are mutually compatible and may result in UNSAT configurations.
+
+| Strategy | Description |
+| --- | --- |
+| TruthTableOrdering | This is a permutation-symmetry breaking strategy that enforces the balls in the truth table result column to appear in ascending order. |
+| ZeroPlus | Enforces that the 0+ error occurs in the top half of the truth table. |
+| Weigh0Ascending | Enforces that the balls that go onto the scale in the first weighing have to be placed in sequential pairs. First ball 0 is placed on the left side of the scale and ball 1 on the right. The next balls that can be placed are 2 and 3 on the left and right respectively. Ball N-1 cannot be on the scale in the first weighing. |
+
+The Z3 solver tactic can also be changed with the **--tactic** parameter. Allowable values are qffd, qflia, and z3-default.
+
+## Proposed Benchmarks
+
+A set of hand-selected benchmarks for measuring the performance of SAT solvers can be generated using the **generate_benchmarks.sh** command.
+
+| Benchmark | Satisfiable? | Kissat Runtime (seconds) |
+| --- | --- | --- |
 
 ## Examples
 
