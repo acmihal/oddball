@@ -71,13 +71,13 @@ def export_cnf(formulation, solver, filename):
                     assert is_not(arg), f'Tactics left unexpected formula:\n{print_formula(arg)}'
                     all_vars.add(arg.arg(0).decl().name())
 
-    # Map sorted vars to integers starting at 1.
+    # Map sorted formulation vars to integers starting at 1.
     var_to_ix_map = {str(var):ix for ix, var in enumerate(sorted(formulation.all_vars(), key=lambda var: str(var)), start=1)}
 
     # Remaining vars in formulas that are not in the formulation.
-    # The ordering of these variables does not matter.
-    all_vars = all_vars - var_to_ix_map.keys()
-    var_to_ix_map.update({var:ix for ix, var in enumerate(all_vars, start=1 + len(var_to_ix_map))})
+    # The ordering of these auxiliary variables does not matter.
+    auxiliary_vars = all_vars - var_to_ix_map.keys()
+    var_to_ix_map.update({var:ix for ix, var in enumerate(auxiliary_vars, start=1+len(var_to_ix_map))})
 
     with open(filename, 'w', encoding='ascii') as cnf_file:
         # Write cnf header
