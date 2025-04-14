@@ -5,7 +5,7 @@ from strategies import StrategyMap
 import time
 from z3 import Solver, Tactic, sat
 
-UsableTactics = ['qffd', 'qflia', 'z3-default']
+UsableTactics = ['z3-default', 'qffd', 'qflia']
 
 def main():
     # Parse arguments.
