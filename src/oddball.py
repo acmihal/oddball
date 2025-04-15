@@ -82,6 +82,9 @@ def main():
         certificate_assertions = import_certificate(f, args.certificate)
         solver.add(certificate_assertions)
         print(f'Certificate applied {len(certificate_assertions)} assertion(s).', flush=True)
+        if len(certificate_assertions) == 0:
+            print(f'No assertions found in certificate. Skipping solver.')
+            return
 
     if args.skip_solver:
         print()
