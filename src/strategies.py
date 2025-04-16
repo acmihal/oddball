@@ -74,7 +74,11 @@ def strategy_weigh_zero_ascending(formulation):
 
     return constraints
 
+def strategy_truth_table_forced(formulation):
+    return [Or([formulation.truth_table_bvar(ball + 1, ball, any_error) for any_error in formulation.Errors]) for ball in range(formulation.num_balls)]
+
 StrategyMap = {'TruthTableOrdering': strategy_truth_table_ordering,
                'ZeroPlus': strategy_zero_plus,
-               'Weigh0Ascending': strategy_weigh_zero_ascending}
+               'Weigh0Ascending': strategy_weigh_zero_ascending,
+               'TruthTableForced': strategy_truth_table_forced}
 
