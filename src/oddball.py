@@ -51,10 +51,11 @@ def main():
     # Apply strategies in order.
     if args.strategy is not None:
         print()
+        print(f'Strategies:')
         for strategy in args.strategy:
             constraints = StrategyMap[strategy](f)
             solver.add(constraints)
-            print(f'Strategy {strategy} applied {len(constraints)} constraint(s).', flush=True)
+            print(f'    {strategy} applied {len(constraints)} constraint(s).', flush=True)
 
     constraints_end_time = time.process_time()
     constraints_elapsed_time = constraints_end_time - constraints_start_time
