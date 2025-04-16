@@ -119,7 +119,7 @@ The results **<**, **<**, and **=** correspond to row 1 in the truth table, whic
 
 **Oddball** is implemented in Python using Z3Py. The constraint formulation uses Boolean variables to indicate that a particular pair of balls are on opposite sides of the scale in each weighing. Combined with the result of the weighing, these Boolean variables imply possibilities about which ball is bad.
 
-If the scale is **balanced** then none of the balls on the scale are bad. The bad ball must be in the holdout set that is not on the scale. If the scale is **not balanced** then the balls on the light side of the scale are not heavy, and the balls on the heavy side of the scale are not light.
+If the scale is **balanced** then none of the balls on the scale are bad. The bad ball must be in the set that is not on the scale. If the scale is **not balanced** then the balls on the light side of the scale are not heavy, and the balls on the heavy side of the scale are not light.
 
 The goal of the SAT solver is to choose pairs of balls to weigh in each weighing such that each truth table row implies at most one result. Also, each ball-error combination must appear at least once in the truth table.
 
@@ -130,6 +130,7 @@ A collection of symmetry-breaking strategies is available via the **--strategy**
 | TruthTableOrdering | This is a permutation-symmetry breaking strategy that enforces the balls in the truth table result column to appear in ascending order. |
 | ZeroPlus | Enforces that the 0+ error occurs in the top half of the truth table. |
 | Weigh0Ascending | Enforces that the balls that go onto the scale in the first weighing have to be placed in sequential pairs. First ball 0 is placed on the left side of the scale and ball 1 on the right. The next balls that can be placed are 2 and 3 on the left and right respectively. Ball N-1 cannot be on the scale in the first weighing. |
+| TruthTableForced | Forces the truth table results to the ball numbers in sequence, starting at row 1. This strategy generates UNSAT configurations for benchmarking. |
 
 The Z3 solver tactic can also be changed with the **--tactic** parameter. Allowable values are qffd, qflia, and z3-default.
 
@@ -139,6 +140,31 @@ A set of hand-selected benchmarks for measuring the performance of SAT solvers c
 
 | Benchmark | Satisfiable? | Kissat Runtime (seconds) |
 | --- | --- | --- |
+| oddball_tto_zp_18_5 | SAT | 5.95 |
+| oddball_tto_zp_7_6 | SAT | 6.47 |
+| oddball_tto_zp_20_5 | SAT | 9.41 |
+| oddball_tto_zp_24_5 | SAT | 14.42 |
+| oddball_tto_zp_25_5 | SAT | 21.01 |
+| oddball_tto_zp_16_6 | SAT | 23.29 |
+| oddball_tto_zp_27_5 | SAT | 28.11 |
+| oddball_tto_zp_28_5 | SAT | 46.74 |
+| oddball_tto_zp_36_5 | SAT | 94.59 |
+| oddball_tto_zp_41_5 | SAT | 419.59 |
+| oddball_tto_zp_40_5 | SAT | 454.62 |
+| oddball_tto_zp_50_5 | SAT | 492.95 |
+| oddball_tto_zp_37_5 | SAT | 786.21 |
+| oddball_tto_zp_38_5 | SAT | 1052.27 |
+| oddball_tto_zp_54_5 | SAT | 1218.97 |
+| oddball_ttf_17_4 | UNSAT | 1.37 |
+| oddball_ttf_20_4 | UNSAT | 10.70 |
+| oddball_ttf_13_4 | UNSAT | 13.46 |
+| oddball_ttf_22_4 | UNSAT | 33.34 |
+| oddball_ttf_19_4 | UNSAT | 34.90 |
+| oddball_ttf_23_4 | UNSAT | 217.49 |
+| oddball_ttf_24_4 | UNSAT | 307.98 |
+| oddball_ttf_26_4 | UNSAT | 1074.91 |
+| oddball_ttf_29_4 | UNSAT | 1399.15 |
+| oddball_ttf_33_4 | UNSAT | 2081.43 |
 
 ## Examples
 
