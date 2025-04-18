@@ -15,6 +15,8 @@ which ball is wrong and whether it is light or heavy.
 A simplifying assumption is made that the balls to be weighed are determined *a priori*.
 That is, the choice of what to weigh next is not dependent on the outcome of the previous weighings.
 
+![Weighing Outcomes](doc/scale.png)
+
 ## Installation
 
     # git clone https://github.com/acmihal/oddball.git
