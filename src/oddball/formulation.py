@@ -70,8 +70,8 @@ class Formulation:
     def good(self, ix, ball):
         return Not(Or([self.truth_table_bvar(ix, ball, error) for error in self.Errors]))
 
-    # Returns a list of all variables in the formulation.
-    def all_vars(self):
+    # Variables that the formulation wants to import from a certificate.
+    def import_vars(self):
         return ([self.weigh_pair_bvar(weigh, left_ball, right_ball) for weigh in range(self.num_weighings) for left_ball in range(self.num_balls) for right_ball in range(self.num_balls)] +
                 [self.truth_table_bvar(ix, ball, error) for ix in range(self.half_tt_rows) for ball, error in self.ball_error_list])
 
