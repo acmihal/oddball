@@ -1,4 +1,4 @@
-from oddball import main
+from oddball.main import main
 from io import StringIO
 from unittest.mock import patch
 import pytest

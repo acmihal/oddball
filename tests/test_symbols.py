@@ -1,4 +1,4 @@
-from formulation import Formulation
+from oddball.formulation import Formulation
 
 def test_ix_to_symbols():
     f1 = Formulation(0, 1)

@@ -1,4 +1,4 @@
-from formulation import Formulation
+from oddball.formulation import Formulation
 from z3 import Solver, sat
 
 def solve(num_balls, num_weighings):
