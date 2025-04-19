@@ -32,7 +32,7 @@ Students are usually tasked with solving the problem first with 9 balls and 3 we
 and then are challenged with the more complicated 12 ball, 3 weighing version.
 It is clear that the ternary nature of the weighing outcomes is critical to the solution.
 
-We implement a SAT-based solution to this puzzle that generalizes to an arbitary number of balls $N$ and number of weighings $W$.
+We implement a SAT-based solution to this puzzle that generalizes to an arbitrary number of balls $N$ and number of weighings $W$.
 Combined with various symmetry-breaking strategies, these puzzles create instances that are useful for benchmarking
 the performance of SAT solvers.
 
@@ -71,7 +71,7 @@ meaning that ball $b$ is light or heavy respectively.
 Each truth table row must imply at most one ball-error combination.
 Every ball-error combination must appear at least once in the truth table.
 
-The outcome of each weighing implies possibilites about the location and error of the odd ball (see Figure~\ref{scale}).
+The outcome of each weighing implies possibilities about the location and error of the odd ball (see Figure~\ref{scale}).
 If the scale is balanced, we know that all of the balls on the scale are good and the odd ball must be in the holdout set
 that is not on the scale.
 If the scale is imbalanced, we know that the odd ball must be on the scale.
