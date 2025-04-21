@@ -3,7 +3,7 @@
 cat << EOF1 > generate_benchmarks.sh
 #!/usr/bin/env bash
 mkdir -p benchmarks
-parallel << EOF
+parallel -j 8 << EOF
 EOF1
 
 cat << EOF2 > selected_benchmarks.md
