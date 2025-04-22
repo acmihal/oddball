@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 mkdir -p benchmarks
-parallel -j 8 << EOF
+#parallel -j 8 << EOF
 oddball 17 5 --strategy TruthTableForced --cnf benchmarks/oddball_17_5_ttf.cnf --skip-solver
 oddball 19 5 --strategy TruthTableForced --cnf benchmarks/oddball_19_5_ttf.cnf --skip-solver
 oddball 20 4 --strategy TruthTableForced --cnf benchmarks/oddball_20_4_ttf.cnf --skip-solver
@@ -41,5 +41,5 @@ oddball 70 5 --strategy TruthTableOrdering --strategy ZeroPlus --cnf benchmarks/
 oddball 47 5 --strategy TruthTableOrdering --strategy ZeroPlus --cnf benchmarks/oddball_47_5_tto_zp.cnf --skip-solver
 oddball 52 5 --strategy TruthTableOrdering --strategy ZeroPlus --cnf benchmarks/oddball_52_5_tto_zp.cnf --skip-solver
 oddball 97 5 --strategy TruthTableForced --cnf benchmarks/oddball_97_5_ttf.cnf --skip-solver
-EOF
+#EOF
 gzip benchmarks/*.cnf
